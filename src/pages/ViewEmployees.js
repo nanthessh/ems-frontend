@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form } from 'react-bootstrap';
+import { getEmployees, addEmployee, updateEmployee, deleteEmployee } from '../services/employeeService';
 
 function ViewEmployees() {
-  const [employees, setEmployees] = useState([
-    { id: 1, name: 'John Doe', email: 'john@example.com', position: 'Developer' },
-    { id: 2, name: 'Jane Smith', email: 'jane@example.com', position: 'Designer' },
-  ]);
-
+  const [employees, setEmployees] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState({ id: null, name: '', email: '', position: '' });
+
+  useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  const loadEmployees = async () => {
+    try {
+      const response = await getEmployees();
+      setEmployees(response.data);
+    } catch (error) {
+      console.error('Error fetching employees', error);
+    }
+  };
 
   const handleClose = () => setShowModal(false);
   const handleShow = () => setShowModal(true);
@@ -26,20 +36,30 @@ function ViewEmployees() {
     handleShow();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this employee?')) {
-      setEmployees(employees.filter(emp => emp.id !== id));
+      try {
+        await deleteEmployee(id);
+        loadEmployees();
+      } catch (error) {
+        console.error('Error deleting employee', error);
+      }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editMode) {
-      setEmployees(employees.map(emp => emp.id === currentEmployee.id ? currentEmployee : emp));
-    } else {
-      setEmployees([...employees, { ...currentEmployee, id: Date.now() }]);
+    try {
+      if (editMode) {
+        await updateEmployee(currentEmployee);
+      } else {
+        await addEmployee(currentEmployee);
+      }
+      handleClose();
+      loadEmployees();
+    } catch (error) {
+      console.error('Error saving employee', error);
     }
-    handleClose();
   };
 
   return (
@@ -52,7 +72,7 @@ function ViewEmployees() {
       <table className="table table-bordered table-striped">
         <thead className="table-dark">
           <tr>
-            <th>#</th>
+            <th>Id</th>
             <th>Name</th>
             <th>Email</th>
             <th>Position</th>
@@ -81,7 +101,7 @@ function ViewEmployees() {
         </tbody>
       </table>
 
-      {/* Modal for Add/Edit */}
+      {/* Modal */}
       <Modal show={showModal} onHide={handleClose}>
         <Modal.Header closeButton>
           <Modal.Title>{editMode ? 'Edit Employee' : 'Add Employee'}</Modal.Title>
